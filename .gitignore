@@ -1,0 +1,12 @@
+# Environment variables / Secrets
+.env
+
+# Data & Vector Index files
+data/
+chroma_db/
+faiss_index/
+*.db
+
+# Python virtual environment
+venv/
+.venv/
