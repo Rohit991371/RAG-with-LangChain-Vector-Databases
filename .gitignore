@@ -10,3 +10,5 @@ faiss_index/
 # Python virtual environment
 venv/
 .venv/
+
+chroma_db_storage/
