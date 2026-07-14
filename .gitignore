@@ -12,3 +12,4 @@ venv/
 .venv/
 
 chroma_db_storage/
+rag_multiSource_note.txt
