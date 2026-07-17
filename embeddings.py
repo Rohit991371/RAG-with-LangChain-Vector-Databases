@@ -85,9 +85,31 @@ def embedding_caching():
         # Confirm identity matches
         match_verification = np.allclose(vectors_1[0], vectors_2[0])
         print(f"Vectors identical verification status: {match_verification}")
+        
+def batch_embeddings():
+    text = [
+        "What is Machine Learning?",
+        "Explain the concept of overfitting in ML.",
+        "How does a neural network work?",
+    ]
+    
+    # Generate vector embeddings for the batch of texts
+    batch_embedding = embeddings_model.embed_documents(text)
+    
+    # Iterate through each text and its corresponding vector
+    for i, (t, emb) in enumerate(zip(text, batch_embedding), start=1):
+        print(f"Text {i}: \"{t}\"")
+        print(f"  Vector dimension : {len(emb)}")
+        print(f"  First 5 values   : {emb[:5]}")
+        
+        # Calculate L2 norm (magnitude) of the vector
+        vector_norm = np.linalg.norm(emb)
+        print(f"  Vector norm      : {vector_norm:.4f}")
+        print("\n" + "-" * 50 + "\n")
 
 
 if __name__ == "__main__":
     # basic_embeddings()
     # similarity_search()
-    embedding_caching()
+    # embedding_caching()
+    batch_embeddings()
