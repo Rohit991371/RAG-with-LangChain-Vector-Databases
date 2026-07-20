@@ -117,20 +117,23 @@ class TelemetryCallbackHandler(BaseCallbackHandler):
         super().__init__()
         self.last_run_prompt_tokens = 0
         self.last_run_completion_tokens = 0
+        self.model_name = "unknown-model"
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> Any:
         """Fires automatically when the model completes generation execution successfully."""
         self.last_run_prompt_tokens = 0
         self.last_run_completion_tokens = 0
 
-        # Traverse generation outputs to extract exact token usage maps
-        if response.llm_output and "token_usage" in response.llm_output:
-            usage = response.llm_output["token_usage"]
+        if response.llm_output:
+            usage = response.llm_output.get("token_usage", {})
             self.last_run_prompt_tokens = usage.get("prompt_tokens", 0)
             self.last_run_completion_tokens = usage.get("completion_tokens", 0)
-
+            self.model_name = response.llm_output.get(
+                "model_name", self.model_name)
 
 # 4. INSTRUMENTED RUNTIME LAYER
+
+
 class InstrumentedProductionLLM:
     """Wrapper that wraps execution targets inside telemetry clocks, callbacks, and JSON logs."""
 
@@ -143,12 +146,15 @@ class InstrumentedProductionLLM:
             "groq:llama-3.1-8b-instant", temperature=0.0)
 
     @traceable(name="instrumented_pipeline_invocation")
-    def execute(self, user_query: str) -> str:
+    def execute(self, user_query: str) -> tuple[str, dict]:
+        """
+        Executes query and returns a tuple containing:
+        (response_content, per_query_telemetry_dict)
+        """
         stopwatch_start = time.perf_counter()
         telemetry_handler = TelemetryCallbackHandler()
 
         try:
-            # Inject native callback handler to capture tokens usage precisely
             response = self.model.invoke(
                 user_query,
                 config={"callbacks": [telemetry_handler]}
@@ -156,7 +162,6 @@ class InstrumentedProductionLLM:
 
             latency = (time.perf_counter() - stopwatch_start) * 1000
 
-            # Save raw metric attributes into tracking state arrays
             self.metrics.record_transaction(
                 latency_ms=latency,
                 prompt_tokens=telemetry_handler.last_run_prompt_tokens,
@@ -164,19 +169,20 @@ class InstrumentedProductionLLM:
                 is_failure=False
             )
 
-            # Stream out structural operational JSON Line logs
+            query_telemetry = {
+                "latency_ms": round(latency, 2),
+                "prompt_tokens": telemetry_handler.last_run_prompt_tokens,
+                "completion_tokens": telemetry_handler.last_run_completion_tokens,
+                "total_tokens": telemetry_handler.last_run_prompt_tokens + telemetry_handler.last_run_completion_tokens,
+                "model_name": telemetry_handler.model_name,
+                "status": "SUCCESS"
+            }
+
             self.logger.info(
-                "LLM execution node transaction succeeded.",
-                extra={
-                    "telemetry_payload": {
-                        "latency_ms": round(latency, 2),
-                        "input_tokens": telemetry_handler.last_run_prompt_tokens,
-                        "output_tokens": telemetry_handler.last_run_completion_tokens,
-                        "status_code": 200
-                    }
-                }
+                "LLM request tracking logged.",
+                extra={"telemetry_payload": query_telemetry}
             )
-            return response.content
+            return response.content, query_telemetry
 
         except Exception as pipeline_exception:
             latency = (time.perf_counter() - stopwatch_start) * 1000
@@ -185,20 +191,25 @@ class InstrumentedProductionLLM:
                 latency_ms=latency, prompt_tokens=0, completion_tokens=0, is_failure=True
             )
 
+            error_telemetry = {
+                "latency_ms": round(latency, 2),
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+                "model_name": "groq:llama-3.1-8b-instant",
+                "status": f"FAILED: {type(pipeline_exception).__name__}"
+            }
+
             self.logger.error(
-                "LLM execution node transaction failed.",
-                extra={
-                    "telemetry_payload": {
-                        "latency_ms": round(latency, 2),
-                        "exception_class": pipeline_exception.__class__.__name__,
-                        "exception_message": str(pipeline_exception),
-                        "status_code": 500
-                    }
-                }
+                "LLM execution failed.",
+                extra={"telemetry_payload": error_telemetry}
             )
-            raise pipeline_exception
+            return str(pipeline_exception), error_telemetry
 
 
+# ==========================================
+# 5. PRODUCTION VERIFICATION DEMO RUNNER
+# ==========================================
 if __name__ == "__main__":
     print("--- Starting Production Inbound Telemetry Engine ---\n")
     instrumented_agent = InstrumentedProductionLLM()
@@ -206,14 +217,28 @@ if __name__ == "__main__":
     sample_queries = [
         "What is the capital city of France?",
         "Explain multi-tenant architecture databases in ten words.",
-        # Will execute fine, handled gracefully
-        "Force an error value validation trigger statement."
+        "List 3 major features of Python programming language."
     ]
 
     for iteration, query in enumerate(sample_queries, start=1):
-        # In production systems, stdout catches these serialized lines for aggregation
-        output = instrumented_agent.execute(query)
+        # 1. Execute query and capture text response + live telemetry record
+        output, query_metrics = instrumented_agent.execute(query)
 
+        # 2. Output Per-Query Telemetry Report (Human-Readable)
+        print("\n" + "-" * 50)
+        print(f"📊 LIVE QUERY REPORT [Request #{iteration}]")
+        print("-" * 50)
+        print(f"  Prompt       : '{query}'")
+        print(f"  Response     : {output.strip()}")
+        print(f"  Model Engine : {query_metrics['model_name']}")
+        print(f"  Latency      : {query_metrics['latency_ms']:.2f} ms")
+        print(f"  Tokens In    : {query_metrics['prompt_tokens']}")
+        print(f"  Tokens Out   : {query_metrics['completion_tokens']}")
+        print(f"  Total Tokens : {query_metrics['total_tokens']}")
+        print(f"  Run Status   : {query_metrics['status']}")
+        print("-" * 50 + "\n")
+
+    # 3. Output Aggregated Metrics Summary Report
     print("\n" + "=" * 60)
     print("AGGREGATED ANALYTICS TELEMETRY METRICS SUMMARY REPORT:")
     print("=" * 60)
