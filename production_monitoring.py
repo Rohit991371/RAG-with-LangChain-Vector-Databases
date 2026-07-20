@@ -21,6 +21,7 @@
 import os
 import time
 import json
+import sys
 import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, List
@@ -37,6 +38,24 @@ load_dotenv()
 os.environ["LANGSMITH_TRACING"] = os.getenv("LANGSMITH_TRACING", "true")
 os.environ["LANGSMITH_PROJECT"] = os.getenv(
     "LANGSMITH_PROJECT", "production_monitoring_logging")
+
+
+# 0. STREAM DUAL-OUTPUT UTILITY (Terminal + File)
+class DualOutputLogger:
+    """Intercepts sys.stdout to mirror terminal prints into a text file."""
+
+    def __init__(self, filename: str):
+        self.terminal = sys.stdout
+        self.log_file = open(filename, "a", encoding="utf-8")
+
+    def write(self, message: str):
+        self.terminal.write(message)
+        self.log_file.write(message)
+        self.log_file.flush()  # Force write immediately
+
+    def flush(self):
+        self.terminal.flush()
+        self.log_file.flush()
 
 
 # 1. STRUCTURED LOGGING SUBSYSTEM
@@ -211,7 +230,15 @@ class InstrumentedProductionLLM:
 # 5. PRODUCTION VERIFICATION DEMO RUNNER
 # ==========================================
 if __name__ == "__main__":
-    print("--- Starting Production Inbound Telemetry Engine ---\n")
+    # Activate mirroring utility to write everything to 'rag_telemetry_output.txt'
+    output_filename = "rag_telemetry_output.txt"
+    sys.stdout = DualOutputLogger(output_filename)
+
+    print(
+        f"--- Telemetry Active: Logging to console and '{output_filename}' ---")
+    print(
+        f"Session started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+
     instrumented_agent = InstrumentedProductionLLM()
 
     sample_queries = [
@@ -221,10 +248,9 @@ if __name__ == "__main__":
     ]
 
     for iteration, query in enumerate(sample_queries, start=1):
-        # 1. Execute query and capture text response + live telemetry record
         output, query_metrics = instrumented_agent.execute(query)
 
-        # 2. Output Per-Query Telemetry Report (Human-Readable)
+        # Output Per-Query Telemetry Report (Human-Readable Dashboard)
         print("\n" + "-" * 50)
         print(f"📊 LIVE QUERY REPORT [Request #{iteration}]")
         print("-" * 50)
@@ -238,7 +264,7 @@ if __name__ == "__main__":
         print(f"  Run Status   : {query_metrics['status']}")
         print("-" * 50 + "\n")
 
-    # 3. Output Aggregated Metrics Summary Report
+    # Output Aggregated Metrics Summary Report
     print("\n" + "=" * 60)
     print("AGGREGATED ANALYTICS TELEMETRY METRICS SUMMARY REPORT:")
     print("=" * 60)
@@ -246,3 +272,5 @@ if __name__ == "__main__":
     for telemetry_key, telemetry_value in summary_data.items():
         print(f"  {telemetry_key:<35} : {telemetry_value}")
     print("=" * 60)
+    print(
+        f"\n--- Logging complete. Check your local directory for '{output_filename}' ---\n")

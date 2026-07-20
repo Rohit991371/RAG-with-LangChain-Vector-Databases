@@ -1,0 +1,68 @@
+--- Telemetry Active: Logging to console and 'rag_telemetry_output.txt' ---
+Session started at: 2026-07-20 18:31:26
+
+--- Telemetry Active: Logging to console and 'rag_telemetry_output.txt' ---
+Session started at: 2026-07-20 18:31:57
+
+
+--------------------------------------------------
+📊 LIVE QUERY REPORT [Request #1]
+--------------------------------------------------
+  Prompt       : 'What is the capital city of France?'
+  Response     : The capital city of France is Paris.
+  Model Engine : llama-3.1-8b-instant
+  Latency      : 190.98 ms
+  Tokens In    : 43
+  Tokens Out   : 9
+  Total Tokens : 52
+  Run Status   : SUCCESS
+--------------------------------------------------
+
+
+--------------------------------------------------
+📊 LIVE QUERY REPORT [Request #2]
+--------------------------------------------------
+  Prompt       : 'Explain multi-tenant architecture databases in ten words.'
+  Response     : Multi-tenant databases serve multiple clients with shared resources efficiently.
+  Model Engine : llama-3.1-8b-instant
+  Latency      : 111.59 ms
+  Tokens In    : 46
+  Tokens Out   : 13
+  Total Tokens : 59
+  Run Status   : SUCCESS
+--------------------------------------------------
+
+
+--------------------------------------------------
+📊 LIVE QUERY REPORT [Request #3]
+--------------------------------------------------
+  Prompt       : 'List 3 major features of Python programming language.'
+  Response     : Here are three major features of the Python programming language:
+
+1. **Easy-to-Read Syntax**: Python has a simple and intuitive syntax that makes it easy to read and write. It uses indentation to define code blocks, which makes the code look clean and organized. This feature makes Python a great language for beginners and experienced programmers alike.
+
+2. **Object-Oriented Programming (OOP) Support**: Python supports object-oriented programming (OOP) concepts such as classes, objects, inheritance, polymorphism, and encapsulation. This feature allows developers to write reusable and modular code that is easy to maintain and extend.
+
+3. **Dynamic Typing**: Python is dynamically typed, which means that you don't need to declare the data type of a variable before using it. This feature makes it easy to write code quickly and experiment with different ideas without worrying about type errors. However, it also means that you need to be careful about type checking and handling errors at runtime.
+  Model Engine : llama-3.1-8b-instant
+  Latency      : 335.82 ms
+  Tokens In    : 45
+  Tokens Out   : 196
+  Total Tokens : 241
+  Run Status   : SUCCESS
+--------------------------------------------------
+
+
+============================================================
+AGGREGATED ANALYTICS TELEMETRY METRICS SUMMARY REPORT:
+============================================================
+  total_requests_processed            : 3
+  total_exceptions_raise              : 0
+  system_error_rate                   : 0.00%
+  average_response_latency_ms         : 212.8
+  cumulative_tokens_consumed          : 352
+  average_tokens_per_payload          : 117.33
+============================================================
+
+--- Logging complete. Check your local directory for 'rag_telemetry_output.txt' ---
+
